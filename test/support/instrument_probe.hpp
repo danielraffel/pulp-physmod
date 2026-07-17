@@ -108,30 +108,6 @@ inline double estimate_f0(const std::vector<float>& x, double t0, double t1,
     return best_lag > 0 ? kFs / best_lag : 0.0;
 }
 
-/// Spectral centroid (Hz) via a direct real DFT over a window -- self-contained.
-inline double centroid(const std::vector<float>& x, double t0, double t1,
-                       int bins = 512) {
-    const auto a = static_cast<std::size_t>(t0 * kFs);
-    const auto b = std::min(static_cast<std::size_t>(t1 * kFs), x.size());
-    if (b <= a + 2) return 0.0;
-    const std::size_t n = b - a;
-    double num = 0.0, den = 0.0;
-    for (int k = 1; k < bins; ++k) {
-        const double f = k * kFs / (2.0 * bins);
-        double re = 0.0, im = 0.0;
-        const double w = M_PI * k / (bins * static_cast<double>(n));
-        for (std::size_t i = 0; i < n; ++i) {
-            const double ph = 2.0 * w * static_cast<double>(i) * n / bins;
-            re += x[a + i] * std::cos(ph);
-            im -= x[a + i] * std::sin(ph);
-        }
-        const double mag = std::sqrt(re * re + im * im);
-        num += f * mag;
-        den += mag;
-    }
-    return den > 0.0 ? num / den : 0.0;
-}
-
 template <typename Factory>
 std::unique_ptr<pulp::format::Processor> make(Factory f) {
     return f();

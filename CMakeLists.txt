@@ -31,3 +31,8 @@ if(PHYSMOD_BUILD_TESTS)
     include(Catch)
     catch_discover_tests(physmod-instrument-tests)
 endif()
+
+# Diagnostic: A/B render each instrument at a low vs default Tone setting.
+add_executable(ab-tone tools/ab_tone.cpp)
+target_include_directories(ab-tone PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/va-drum ${CMAKE_SOURCE_DIR}/test)
+target_link_libraries(ab-tone PRIVATE pulp::format pulp::signal)
