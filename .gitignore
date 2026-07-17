@@ -1,0 +1,5 @@
+/build/
+/build-*/
+*.pkg
+*.dmg
+.DS_Store
