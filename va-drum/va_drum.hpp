@@ -109,7 +109,7 @@ public:
         voice_.set_tune(state().get_value(kVaDrumTune) * kReferenceTuneTrim);
         voice_.set_decay(reference_decay_taper(state().get_value(kVaDrumDecay) / 100.0));
         voice_.set_tone(state().get_value(kVaDrumTone) / 100.0);
-        voice_.set_level(state().get_value(kVaDrumLevel) / 100.0);
+        voice_.set_level(reference_level_taper(state().get_value(kVaDrumLevel) / 100.0));
         voice_.set_pulse_width_s(state().get_value(kVaDrumPulseWidth) / 1000.0);
         voice_.set_attack_gate_s(state().get_value(kVaDrumAttackGate) / 1000.0);
         voice_.set_sigh_enabled(state().get_value(kVaDrumSigh) >= 0.5f);

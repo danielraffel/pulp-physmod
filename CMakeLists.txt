@@ -36,3 +36,7 @@ endif()
 add_executable(ab-tone tools/ab_tone.cpp)
 target_include_directories(ab-tone PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/va-drum ${CMAKE_SOURCE_DIR}/test)
 target_link_libraries(ab-tone PRIVATE pulp::format pulp::signal)
+
+add_executable(knob-sweep tools/knob_sweep.cpp)
+target_include_directories(knob-sweep PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/va-drum ${CMAKE_SOURCE_DIR}/test)
+target_link_libraries(knob-sweep PRIVATE pulp::format pulp::signal)

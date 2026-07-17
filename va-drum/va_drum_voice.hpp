@@ -337,7 +337,12 @@ private:
     }
 
     void update_output() noexcept {
-        const double vr5 = comps_.vr5 * tone_l_;
+        // The tone stage is a one-pole lowpass; a larger series resistance drops
+        // its corner and darkens the sound. The pot must therefore shrink that
+        // resistance as it opens, so Tone up raises the corner and brightens the
+        // drum -- turning the knob up on the reference adds the attack click, and
+        // this maps that way rather than backwards.
+        const double vr5 = comps_.vr5 * (1.0 - tone_l_);
         const double req = comps_.r171 + (comps_.r172 * vr5) / (comps_.r172 + vr5);
         tone_.set_analog(0.0, 1.0, req * comps_.c45, 1.0, bilinear_c_);
 
@@ -413,6 +418,27 @@ inline double reference_decay_taper(double knob01) noexcept {
         }
     }
     return kk[4];
+}
+
+/// Maps the Level knob (0..1) to the level-stage divider fraction along the
+/// reference's audio taper. The reference Level is an audio (roughly quadratic)
+/// pot -- quiet for the first half of the knob, then opening quickly -- not the
+/// linear divider the raw circuit gives, which jumps loud far too early. This is
+/// the reference's measured peak-vs-knob curve, normalized so the top of the
+/// knob is unity.
+inline double reference_level_taper(double knob01) noexcept {
+    // 0/10/.../100% of the reference Level knob, peak normalized to the top.
+    static constexpr double kn[11] = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    static constexpr double lv[11] = {0.0, 0.029, 0.065, 0.109, 0.169, 0.242,
+                                      0.332, 0.443, 0.591, 0.777, 1.0};
+    knob01 = std::clamp(knob01, 0.0, 1.0);
+    for (int i = 0; i < 10; ++i) {
+        if (knob01 <= kn[i + 1]) {
+            const double frac = (knob01 - kn[i]) / (kn[i + 1] - kn[i]);
+            return lv[i] + (lv[i + 1] - lv[i]) * frac;
+        }
+    }
+    return lv[10];
 }
 
 }  // namespace pulp::examples
