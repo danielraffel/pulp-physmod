@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <cmath>
 
 namespace pulp::examples {
 
@@ -55,10 +56,14 @@ public:
         // Every control is a component value or a knob position on one, which
         // is what makes the circuit bendable: a "mod" is an edit to an R or a C
         // in the same equations the stock sound comes out of.
+        // The drum is chromatic: MIDI note sets the pitch (root note plays the
+        // reference tuning). The Tune knob is the reference's own one-octave
+        // trim on top, so the stock centre (50%) matches the reference and the
+        // ends span the same octave its Tune pot did.
         store.add_parameter({.id = kVaDrumTune,
                              .name = "Tune",
-                             .unit = "x",
-                             .range = {0.5f, 2.0f, 1.0f, 0.01f}});
+                             .unit = "%",
+                             .range = {0.0f, 100.0f, 50.0f, 0.1f}});
         store.add_parameter({.id = kVaDrumDecay,
                              .name = "Decay",
                              .unit = "%",
@@ -106,7 +111,7 @@ public:
         // The Tune and Decay knobs pass through the reference calibration so the
         // stock positions land on the measured reference curve; every other control
         // is the raw component value.
-        voice_.set_tune(state().get_value(kVaDrumTune) * kReferenceTuneTrim);
+        // Tune is set per note-on (chromatic), not here.
         voice_.set_decay(reference_decay_taper(state().get_value(kVaDrumDecay) / 100.0));
         voice_.set_tone(state().get_value(kVaDrumTone) / 100.0);
         voice_.set_level(reference_level_taper(state().get_value(kVaDrumLevel) / 100.0));
@@ -131,6 +136,14 @@ public:
                 // Note-off is meaningless here: the drum rings until it stops,
                 // and there is nothing to release.
                 if (event.is_note_on() && event.velocity() > 0) {
+                    // Chromatic: the note sets the pitch (root note plays the
+                    // reference tuning), the Tune knob rides the reference's own
+                    // one-octave trim on top, and kReferenceTuneTrim lands the
+                    // stock centre on the reference pitch.
+                    const double semis =
+                        static_cast<double>(event.note()) - kVaDrumRootNote;
+                    voice_.set_tune(reference_tune_offset(state().get_value(kVaDrumTune) / 100.0) *
+                                    std::pow(2.0, semis / 12.0) * kReferenceTuneTrim);
                     voice_.trigger(accent_volts(event.velocity()));
                 }
                 ++next_event;

@@ -420,6 +420,22 @@ inline double reference_decay_taper(double knob01) noexcept {
     return kk[4];
 }
 
+/// MIDI note that plays the reference tuning when the Tune knob is centred. Set
+/// an octave below the usual kick note so the instrument sits an octave up in
+/// the normal playing range by default.
+inline constexpr int kVaDrumRootNote = 24;
+
+/// Maps the Tune knob (0..1) to a pitch multiplier spanning the reference's own
+/// one-octave Tune range (its pot swept roughly one octave), centred at 1.0 so
+/// the stock knob (50%) plays the reference pitch. Chromatic note transposition
+/// multiplies on top of this.
+inline double reference_tune_offset(double knob01) noexcept {
+    knob01 = std::clamp(knob01, 0.0, 1.0);
+    // Reference Tune pot: ~0.667x at the bottom to ~1.333x at the top (one
+    // octave), linear in frequency, 1.0x at centre.
+    return 0.6667 + 0.6667 * knob01;
+}
+
 /// Maps the Level knob (0..1) to the level-stage divider fraction along the
 /// reference's audio taper. The reference Level is an audio (roughly quadratic)
 /// pot -- quiet for the first half of the knob, then opening quickly -- not the
