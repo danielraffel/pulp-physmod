@@ -23,7 +23,7 @@ pulp_add_plugin(PulpKit
     PLUGIN_NAME       "PulpKit"
     BUNDLE_ID         "com.pulp.pulp-kit"
     MANUFACTURER      "Pulp"
-    VERSION           "1.0.0"
+    VERSION           "${PROJECT_VERSION}"
     CATEGORY          Instrument
     PLUGIN_CODE       "PKit"
     MANUFACTURER_CODE "Pulp"

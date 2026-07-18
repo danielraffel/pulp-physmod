@@ -6,5 +6,5 @@ static const Steinberg::FUID GongUID(0x50554C50, 0x474F4E47, 0x504C4154, 0x00000
 
 PULP_VST3_PLUGIN(GongUID, "Gong",
                  Steinberg::Vst::PlugType::kInstrumentSynth,
-                 "Pulp", "1.0.0", "https://github.com/danielraffel/pulp",
+                 "Pulp", PULP_PHYSMOD_VERSION, "https://github.com/danielraffel/pulp",
                  pulp::examples::create_gong)

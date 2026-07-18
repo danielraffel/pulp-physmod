@@ -10,6 +10,7 @@
 # (build_combined_installer.sh) when PULP_REPO points at a Pulp checkout.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
+VERSION="$(tr -d '[:space:]' < "$HERE/release-version.txt")"
 SDK=""; SIGN_APP=""; SIGN_INST=""; NOTARIZE=0
 while [[ $# -gt 0 ]]; do case "$1" in
   --sdk) SDK="$2"; shift 2;;
@@ -44,7 +45,7 @@ for name in VaDrum PulpKit ModalInstrument PreparedPiano BowedString Gong; do
 done
 
 if [[ -n "$SIGN_APP" && -n "$SIGN_INST" && -n "${PULP_REPO:-}" ]]; then
-  args=(--name PulpPhysmod --version 1.0.0 --sign-identity "$SIGN_APP"
+  args=(--name PulpPhysmod --version "$VERSION" --sign-identity "$SIGN_APP"
         --installer-identity "$SIGN_INST" --out "$HERE/dist" "${PLUGINS[@]}")
   [[ "$NOTARIZE" == 1 ]] || args+=(--no-notarize)
   bash "$PULP_REPO/tools/scripts/build_combined_installer.sh" "${args[@]}"
@@ -59,7 +60,7 @@ else
     cp -R "$HERE/build/VST3/$name.vst3"    "$ROOT/Library/Audio/Plug-Ins/VST3/"
   done
   mkdir -p "$HERE/dist"
-  pkgbuild --root "$ROOT" --identifier com.pulp.physmod --version 1.0.0 \
-           --install-location / "$HERE/dist/PulpPhysmod-1.0.0-unsigned.pkg"
-  echo "wrote $HERE/dist/PulpPhysmod-1.0.0-unsigned.pkg"
+  pkgbuild --root "$ROOT" --identifier com.pulp.physmod --version "$VERSION" \
+           --install-location / "$HERE/dist/PulpPhysmod-$VERSION-unsigned.pkg"
+  echo "wrote $HERE/dist/PulpPhysmod-$VERSION-unsigned.pkg"
 fi
