@@ -29,7 +29,7 @@ public:
     VoiceColumn(std::shared_ptr<PulpKitUiActivity> activity,
                 PulpKitVoiceIndex voice)
         : activity_(std::move(activity)), voice_(voice) {
-        last_hit_ = activity_->hits[voice_].load(std::memory_order_relaxed);
+        last_hit_ = activity_->sequence(voice_);
     }
 
     ~VoiceColumn() override { unsubscribe_activity(); }
@@ -59,9 +59,7 @@ public:
 
     float flash_intensity() const { return flash_; }
     void poll_activity() {
-        const auto hit = activity_->hits[voice_].load(std::memory_order_relaxed);
-        if (hit == last_hit_) return;
-        last_hit_ = hit;
+        if (!activity_->consume(voice_, last_hit_)) return;
         flash_ = 1.0f;
         request_repaint();
         animate(
@@ -79,7 +77,7 @@ private:
 
     std::shared_ptr<PulpKitUiActivity> activity_;
     PulpKitVoiceIndex voice_;
-    std::uint32_t last_hit_ = 0;
+    PulpKitUiActivity::Sequence last_hit_ = 0;
     float flash_ = 0.0f;
     view::FrameClock* subscribed_clock_ = nullptr;
     int activity_subscription_ = -1;

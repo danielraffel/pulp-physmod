@@ -43,11 +43,10 @@
 #include <pulp/audio/buffer.hpp>
 #include <pulp/format/processor.hpp>
 #include <pulp/midi/buffer.hpp>
+#include <pulp/runtime/activity_channel.hpp>
 #include <pulp/state/store.hpp>
 
 #include <algorithm>
-#include <array>
-#include <atomic>
 #include <cstdint>
 #include <memory>
 
@@ -149,16 +148,7 @@ enum PulpKitVoiceIndex : std::size_t {
     kPulpKitVoiceCount,
 };
 
-/// Lock-free audio-to-UI hit notification. The editor owns this jointly with
-/// the processor, so a host retaining a view during processor teardown never
-/// leaves the UI polling processor memory.
-struct PulpKitUiActivity {
-    void hit(PulpKitVoiceIndex voice) noexcept {
-        hits[voice].fetch_add(1, std::memory_order_relaxed);
-    }
-
-    std::array<std::atomic<std::uint32_t>, kPulpKitVoiceCount> hits{};
-};
+using PulpKitUiActivity = runtime::ActivityChannel<kPulpKitVoiceCount>;
 
 class PulpKit : public format::Processor {
 public:
@@ -449,62 +439,62 @@ private:
         switch (note) {
             case 36:
                 kick_.trigger(accent);
-                ui_activity_->hit(kPulpKitVoiceKick);
+                ui_activity_->signal(kPulpKitVoiceKick);
                 break;
             case 37:
                 rim_.trigger(v01);
-                ui_activity_->hit(kPulpKitVoiceRim);
+                ui_activity_->signal(kPulpKitVoiceRim);
                 break;
             case 38:
             case 40:
                 snare_.trigger(v01);
-                ui_activity_->hit(kPulpKitVoiceSnare);
+                ui_activity_->signal(kPulpKitVoiceSnare);
                 break;
             case 39:
                 clap_.trigger(static_cast<float>(v01));
-                ui_activity_->hit(kPulpKitVoiceClap);
+                ui_activity_->signal(kPulpKitVoiceClap);
                 break;
             case 41:
             case 43:
                 tom_low_.trigger(accent);
-                ui_activity_->hit(kPulpKitVoiceLowTom);
+                ui_activity_->signal(kPulpKitVoiceLowTom);
                 break;
             case 45:
             case 47:
                 tom_mid_.trigger(accent);
-                ui_activity_->hit(kPulpKitVoiceMidTom);
+                ui_activity_->signal(kPulpKitVoiceMidTom);
                 break;
             case 48:
             case 50:
                 tom_hi_.trigger(accent);
-                ui_activity_->hit(kPulpKitVoiceHiTom);
+                ui_activity_->signal(kPulpKitVoiceHiTom);
                 break;
             case 42:
             case 44:
                 closed_hat_.trigger(static_cast<float>(v01));
                 open_hat_.choke();
-                ui_activity_->hit(kPulpKitVoiceClosedHat);
+                ui_activity_->signal(kPulpKitVoiceClosedHat);
                 break;
             case 46:
                 open_hat_.trigger(static_cast<float>(v01));
-                ui_activity_->hit(kPulpKitVoiceOpenHat);
+                ui_activity_->signal(kPulpKitVoiceOpenHat);
                 break;
             case 49:
                 cymbal_.trigger(static_cast<float>(v01));
-                ui_activity_->hit(kPulpKitVoiceCymbal);
+                ui_activity_->signal(kPulpKitVoiceCymbal);
                 break;
             case 51:
             case 56:
                 cowbell_.trigger(static_cast<float>(v01));
-                ui_activity_->hit(kPulpKitVoiceCowbell);
+                ui_activity_->signal(kPulpKitVoiceCowbell);
                 break;
             case 70:
                 maracas_.trigger(static_cast<float>(v01));
-                ui_activity_->hit(kPulpKitVoiceMaracas);
+                ui_activity_->signal(kPulpKitVoiceMaracas);
                 break;
             case 75:
                 clave_.trigger(v01);
-                ui_activity_->hit(kPulpKitVoiceClave);
+                ui_activity_->signal(kPulpKitVoiceClave);
                 break;
             default: break;  // note outside the kit map -- ignore
         }
@@ -582,8 +572,8 @@ private:
     RimClaveVoice rim_{};
     RimClaveVoice clave_{};
     MaracasVoice maracas_{};
-    std::shared_ptr<PulpKitUiActivity> ui_activity_ =
-        std::make_shared<PulpKitUiActivity>();
+    runtime::SharedActivityChannel<kPulpKitVoiceCount> ui_activity_ =
+        runtime::make_activity_channel<kPulpKitVoiceCount>();
 
     // Per-pad calibrated tom decay centres, captured at prepare().
     double tom_low_base_decay_ = 0.5;
