@@ -9,6 +9,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include <pulp/view/ui_components.hpp>
+#include <pulp/view/frame_clock.hpp>
 #include <pulp/view/screenshot.hpp>
 #include <pulp/view/widgets.hpp>
 
@@ -186,7 +187,7 @@ TEST_CASE("PulpKit Snappy is neutral at default and scales only the noise path",
     REQUIRE(on_energy > 0.0);
 }
 
-TEST_CASE("PulpKit editor exposes the classic panel and every extended control",
+TEST_CASE("PulpKit editor exposes every control in one MIDI-ordered surface",
           "[instrument][pulp-kit][editor]") {
     using namespace pulp::examples;
     PulpKit kit;
@@ -196,72 +197,111 @@ TEST_CASE("PulpKit editor exposes the classic panel and every extended control",
 
     auto editor = kit.create_view();
     REQUIRE(editor != nullptr);
-    editor->set_bounds({0, 0, 1200, 640});
+    editor->set_bounds({0, 0, 1200, 480});
     editor->layout_children();
+    REQUIRE(find_view(*editor, "surface-tabs") == nullptr);
+    auto* surface = find_view(*editor, "kit-surface");
+    REQUIRE(surface != nullptr);
+    REQUIRE(surface->child_count() == kPulpKitVoiceCount);
 
-    REQUIRE(find_view(*editor, "classic:" + std::to_string(kPulpKitKickLevel)) != nullptr);
-    REQUIRE(find_view(*editor, "classic:" + std::to_string(kPulpKitSnareSnappy)) != nullptr);
-    REQUIRE(find_view(*editor, "classic:" + std::to_string(kPulpKitClosedHatLevel)) != nullptr);
-    auto* rim_selector = dynamic_cast<pulp::view::SegmentedControl*>(
-        find_view(*editor, "classic-selector:rim-claves"));
-    auto* clap_selector = dynamic_cast<pulp::view::SegmentedControl*>(
-        find_view(*editor, "classic-selector:clap-maracas"));
-    REQUIRE(rim_selector != nullptr);
-    REQUIRE(clap_selector != nullptr);
-    CHECK(rim_selector->segments() == std::vector<std::string>({"RS", "CL"}));
-    CHECK(clap_selector->segments() == std::vector<std::string>({"CP", "MA"}));
+    constexpr std::array<const char*, kPulpKitVoiceCount> midi_order{
+        "voice:36", "voice:37", "voice:38", "voice:39", "voice:41",
+        "voice:42", "voice:45", "voice:46", "voice:48", "voice:49",
+        "voice:51", "voice:70", "voice:75"};
+    for (std::size_t i = 0; i < midi_order.size(); ++i) {
+        INFO("voice column " << midi_order[i]);
+        CHECK(surface->child_at(i)->id() == midi_order[i]);
+        const auto b = surface->child_at(i)->bounds();
+        CHECK(b.x >= 0.0f);
+        CHECK(b.right() <= surface->local_bounds().right() + 0.01f);
+        CHECK(b.bottom() <= surface->local_bounds().bottom() + 0.01f);
+    }
+
+    for (int id = 0; id < kPulpKitParamCount; ++id)
+        REQUIRE(find_view(*editor, "control:" + std::to_string(id)) != nullptr);
+    REQUIRE(count_knobs(*editor) == kPulpKitParamCount);
+
+    // The advertised minimum editor size is still a one-screen surface: every
+    // column and every knob stays inside its immediate viewport.
+    editor->set_bounds({0, 0, 780, 420});
+    editor->layout_children();
+    for (std::size_t i = 0; i < surface->child_count(); ++i) {
+        const auto* column = surface->child_at(i);
+        const auto column_bounds = column->bounds();
+        CHECK(column_bounds.right() <= surface->local_bounds().right() + 0.01f);
+        CHECK(column_bounds.bottom() <= surface->local_bounds().bottom() + 0.01f);
+        for (std::size_t control = 0; control < column->child_count(); ++control) {
+            const auto knob_bounds = column->child_at(control)->bounds();
+            CHECK(knob_bounds.right() <= column->local_bounds().right() + 0.01f);
+            CHECK(knob_bounds.bottom() <= column->local_bounds().bottom() + 0.01f);
+        }
+    }
 
     editor->set_bounds({0, 0, 1200, 480});
     editor->layout_children();
-    auto* classic_page = dynamic_cast<pulp::view::ScrollView*>(
-        find_view(*editor, "classic-page"));
-    auto* extended_page = dynamic_cast<pulp::view::ScrollView*>(
-        find_view(*editor, "extended-page"));
-    REQUIRE(classic_page != nullptr);
-    REQUIRE(extended_page != nullptr);
-    CHECK_FALSE(classic_page->wants_wheel_scroll());
-    auto* tabs = dynamic_cast<pulp::view::TabPanel*>(
-        find_view(*editor, "surface-tabs"));
-    REQUIRE(tabs != nullptr);
-
-    const auto classic_png = pulp::view::render_to_png(
+    const auto png = pulp::view::render_to_png(
         *editor, 1200, 480, 1.0f, pulp::view::ScreenshotBackend::skia);
-    REQUIRE(classic_png.size() > 1000);
-    std::ofstream("/tmp/pulpkit-classic.png", std::ios::binary)
-        .write(reinterpret_cast<const char*>(classic_png.data()),
-               static_cast<std::streamsize>(classic_png.size()));
+    REQUIRE(png.size() > 1000);
+    std::ofstream("/tmp/pulpkit-single-surface.png", std::ios::binary)
+        .write(reinterpret_cast<const char*>(png.data()),
+               static_cast<std::streamsize>(png.size()));
 
-    REQUIRE(tabs->set_active_tab("Extended", pulp::view::Notify::none));
-    editor->layout_children();
-    CHECK(extended_page->content_size().height > extended_page->local_bounds().height);
-    CHECK(extended_page->wants_wheel_scroll());
+    pulp::view::FrameClock clock;
+    editor->set_frame_clock(&clock);
+    auto* snare_column = dynamic_cast<pulp_kit_ui::VoiceColumn*>(
+        find_view(*editor, "voice:38"));
+    REQUIRE(snare_column != nullptr);
+    CHECK(snare_column->flash_intensity() == 0.0f);
 
-    const auto extended_png = pulp::view::render_to_png(
+    pulp::format::PrepareContext prepare_context;
+    prepare_context.sample_rate = kFs;
+    prepare_context.max_buffer_size = kBlock;
+    kit.prepare(prepare_context);
+    std::array<float, kBlock> left{}, right{}, input{};
+    float* output_channels[] = {left.data(), right.data()};
+    const float* input_channels[] = {input.data(), input.data()};
+    pulp::audio::BufferView<float> output(output_channels, 2, kBlock);
+    pulp::audio::BufferView<const float> audio_input(input_channels, 2, kBlock);
+    pulp::format::ProcessContext process_context;
+    process_context.sample_rate = kFs;
+    process_context.num_samples = kBlock;
+    auto trigger_note = [&](std::uint8_t note) {
+        pulp::midi::MidiBuffer midi_in, midi_out;
+        midi_in.add(pulp::midi::MidiEvent::note_on(0, note, 100));
+        kit.process(output, audio_input, midi_in, midi_out, process_context);
+    };
+
+    trigger_note(38);
+    clock.pump_activity(1.0f / 60.0f);
+    CHECK(snare_column->flash_intensity() == 1.0f);
+    const auto hit_png = pulp::view::render_to_png(
         *editor, 1200, 480, 1.0f, pulp::view::ScreenshotBackend::skia);
-    REQUIRE(extended_png.size() > 1000);
-    std::ofstream("/tmp/pulpkit-extended.png", std::ios::binary)
-        .write(reinterpret_cast<const char*>(extended_png.data()),
-               static_cast<std::streamsize>(extended_png.size()));
+    REQUIRE(hit_png.size() > 1000);
+    std::ofstream("/tmp/pulpkit-midi-hit.png", std::ios::binary)
+        .write(reinterpret_cast<const char*>(hit_png.data()),
+               static_cast<std::streamsize>(hit_png.size()));
+    clock.tick(0.21f);
+    CHECK(snare_column->flash_intensity() > 0.0f);
+    CHECK(snare_column->flash_intensity() < 1.0f);
+    clock.tick(0.22f);
+    CHECK(snare_column->flash_intensity() == Catch::Approx(0.0f));
 
-    extended_page->scroll_by(0.0f, 100.0f, false);
-    CHECK(extended_page->target_scroll_y() > 0.0f);
+    // A repeated hit restarts the pulse at full intensity.
+    trigger_note(38);
+    clock.pump_activity(1.0f / 60.0f);
+    CHECK(snare_column->flash_intensity() == 1.0f);
 
-    auto* classic_level = dynamic_cast<pulp::view::Knob*>(
-        find_view(*editor, "classic:" + std::to_string(kPulpKitKickLevel)));
-    auto* extended_level = dynamic_cast<pulp::view::Knob*>(
-        find_view(*editor, "extended:" + std::to_string(kPulpKitKickLevel)));
-    REQUIRE(classic_level != nullptr);
-    REQUIRE(extended_level != nullptr);
-    classic_level->on_change(1.0f);
-    CHECK(store.get_value(kPulpKitKickLevel) == Catch::Approx(100.0f));
-    extended_level->on_change(1.0f);
-    CHECK(store.get_value(kPulpKitKickLevel) == Catch::Approx(200.0f));
-
-    for (int id = 0; id < kPulpKitParamCount; ++id)
-        REQUIRE(find_view(*editor, "extended:" + std::to_string(id)) != nullptr);
-
-    // 23 original-style controls plus all 54 controls in Extended.
-    REQUIRE(count_knobs(*editor) == 23 + kPulpKitParamCount);
+    constexpr std::array<std::uint8_t, kPulpKitVoiceCount - 1> other_notes{
+        36, 37, 39, 41, 42, 45, 46, 48, 49, 51, 70, 75};
+    for (const auto note : other_notes) {
+        auto* column = dynamic_cast<pulp_kit_ui::VoiceColumn*>(
+            find_view(*editor, "voice:" + std::to_string(note)));
+        REQUIRE(column != nullptr);
+        CHECK(column->flash_intensity() == 0.0f);
+        trigger_note(note);
+        clock.pump_activity(1.0f / 60.0f);
+        CHECK(column->flash_intensity() == 1.0f);
+    }
 }
 
 TEST_CASE("PulpKit bass-drum sweeps pin numeric reference-facing behavior",
