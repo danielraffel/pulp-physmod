@@ -11,6 +11,7 @@
 #include <pulp/view/ui_components.hpp>
 #include <pulp/view/frame_clock.hpp>
 #include <pulp/view/screenshot.hpp>
+#include <pulp/view/screenshot_compare.hpp>
 #include <pulp/view/widgets.hpp>
 
 #include <array>
@@ -197,7 +198,7 @@ TEST_CASE("PulpKit editor exposes every control in one MIDI-ordered surface",
 
     auto editor = kit.create_view();
     REQUIRE(editor != nullptr);
-    editor->set_bounds({0, 0, 1200, 480});
+    editor->set_bounds({0, 0, 1200, 330});
     editor->layout_children();
     REQUIRE(find_view(*editor, "surface-tabs") == nullptr);
     auto* surface = find_view(*editor, "kit-surface");
@@ -223,7 +224,7 @@ TEST_CASE("PulpKit editor exposes every control in one MIDI-ordered surface",
 
     // The advertised minimum editor size is still a one-screen surface: every
     // column and every knob stays inside its immediate viewport.
-    editor->set_bounds({0, 0, 780, 420});
+    editor->set_bounds({0, 0, 780, 330});
     editor->layout_children();
     for (std::size_t i = 0; i < surface->child_count(); ++i) {
         const auto* column = surface->child_at(i);
@@ -237,11 +238,12 @@ TEST_CASE("PulpKit editor exposes every control in one MIDI-ordered surface",
         }
     }
 
-    editor->set_bounds({0, 0, 1200, 480});
+    editor->set_bounds({0, 0, 1200, 330});
     editor->layout_children();
     const auto png = pulp::view::render_to_png(
-        *editor, 1200, 480, 1.0f, pulp::view::ScreenshotBackend::skia);
+        *editor, 1200, 330, 1.0f, pulp::view::ScreenshotBackend::skia);
     REQUIRE(png.size() > 1000);
+    REQUIRE(pulp::view::analyze_screenshot_content(png).passes_content_floor());
     std::ofstream("/tmp/pulpkit-single-surface.png", std::ios::binary)
         .write(reinterpret_cast<const char*>(png.data()),
                static_cast<std::streamsize>(png.size()));
@@ -271,12 +273,29 @@ TEST_CASE("PulpKit editor exposes every control in one MIDI-ordered surface",
         kit.process(output, audio_input, midi_in, midi_out, process_context);
     };
 
+    // The title/background is also a manual audition pad. It uses the shared
+    // SDK occurrence channel and enters the same realtime dispatch path as MIDI.
+    pulp::view::MouseEvent manual_press;
+    manual_press.position = {12.0f, 12.0f};
+    manual_press.button = pulp::view::MouseButton::left;
+    manual_press.phase = pulp::view::MousePhase::press;
+    snare_column->on_mouse_event(manual_press);
+    trigger_note(0);  // process one block with no mapped MIDI note
+    CHECK(std::any_of(left.begin(), left.end(), [](float sample) {
+        return std::abs(sample) > 1.0e-8f;
+    }));
+    clock.pump_activity(1.0f / 60.0f);
+    CHECK(snare_column->flash_intensity() == 1.0f);
+    clock.tick(0.43f);
+    CHECK(snare_column->flash_intensity() == Catch::Approx(0.0f));
+
     trigger_note(38);
     clock.pump_activity(1.0f / 60.0f);
     CHECK(snare_column->flash_intensity() == 1.0f);
     const auto hit_png = pulp::view::render_to_png(
-        *editor, 1200, 480, 1.0f, pulp::view::ScreenshotBackend::skia);
+        *editor, 1200, 330, 1.0f, pulp::view::ScreenshotBackend::skia);
     REQUIRE(hit_png.size() > 1000);
+    REQUIRE(pulp::view::analyze_screenshot_content(hit_png).passes_content_floor());
     std::ofstream("/tmp/pulpkit-midi-hit.png", std::ios::binary)
         .write(reinterpret_cast<const char*>(hit_png.data()),
                static_cast<std::streamsize>(hit_png.size()));

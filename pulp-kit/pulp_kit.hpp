@@ -149,6 +149,7 @@ enum PulpKitVoiceIndex : std::size_t {
 };
 
 using PulpKitUiActivity = runtime::ActivityChannel<kPulpKitVoiceCount>;
+using PulpKitManualTriggers = runtime::ActivityChannel<kPulpKitVoiceCount>;
 
 class PulpKit : public format::Processor {
 public:
@@ -166,7 +167,7 @@ public:
     }
 
     format::ViewSize view_size() const override {
-        return {1200, 480, 780, 420, 1600, 900};
+        return {1200, 330, 780, 330, 1600, 640};
     }
 
     std::unique_ptr<view::View> create_view() override;
@@ -307,6 +308,22 @@ public:
 
         int32_t next_event = 0;
         const auto event_count = static_cast<int32_t>(midi_in.size());
+
+        // Header taps arrive from any retained editor through the SDK's shared
+        // occurrence channel. Drain them at the block boundary and route them
+        // through the exact same voice path as MIDI. The per-lane cap makes a
+        // stale or hostile UI producer bounded on the realtime thread; a human
+        // cannot approach eight taps on one pad inside a single audio block.
+        constexpr std::uint32_t kMaxManualHitsPerLanePerBlock = 8;
+        constexpr std::array<std::uint8_t, kPulpKitVoiceCount> manual_notes{
+            36, 37, 38, 39, 41, 42, 45, 46, 48, 49, 51, 70, 75};
+        for (std::size_t lane = 0; lane < kPulpKitVoiceCount; ++lane) {
+            const auto pending = std::min(
+                manual_triggers_->consume_count(lane, manual_trigger_cursors_[lane]),
+                kMaxManualHitsPerLanePerBlock);
+            for (std::uint32_t hit = 0; hit < pending; ++hit)
+                dispatch(manual_notes[lane], 100);
+        }
 
         for (int32_t i = 0; i < n_samples; ++i) {
             // Dispatch every event timestamped at or before this sample so a
@@ -574,6 +591,10 @@ private:
     MaracasVoice maracas_{};
     runtime::SharedActivityChannel<kPulpKitVoiceCount> ui_activity_ =
         runtime::make_activity_channel<kPulpKitVoiceCount>();
+    runtime::SharedActivityChannel<kPulpKitVoiceCount> manual_triggers_ =
+        runtime::make_activity_channel<kPulpKitVoiceCount>();
+    std::array<PulpKitManualTriggers::Sequence, kPulpKitVoiceCount>
+        manual_trigger_cursors_{};
 
     // Per-pad calibrated tom decay centres, captured at prepare().
     double tom_low_base_decay_ = 0.5;

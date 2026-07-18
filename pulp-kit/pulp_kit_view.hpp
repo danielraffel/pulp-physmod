@@ -27,9 +27,12 @@ using Control = std::pair<state::ParamID, std::string_view>;
 class VoiceColumn final : public view::GroupBox {
 public:
     VoiceColumn(std::shared_ptr<PulpKitUiActivity> activity,
+                std::shared_ptr<PulpKitManualTriggers> manual_triggers,
                 PulpKitVoiceIndex voice)
-        : activity_(std::move(activity)), voice_(voice) {
+        : activity_(std::move(activity)),
+          manual_triggers_(std::move(manual_triggers)), voice_(voice) {
         last_hit_ = activity_->sequence(voice_);
+        set_cursor(view::View::CursorStyle::pointer);
     }
 
     ~VoiceColumn() override { unsubscribe_activity(); }
@@ -46,9 +49,13 @@ public:
 
     void paint(canvas::Canvas& canvas) override {
         view::GroupBox::paint(canvas);
+        const auto b = local_bounds();
+        canvas.set_fill_color(canvas::Color::rgba8(255, 176, 72));
+        canvas.set_font("Inter", 10.0f);
+        canvas.set_text_align(canvas::TextAlign::right);
+        canvas.fill_text("▶", b.width - 7.0f, 20.0f);
         if (flash_ <= 0.001f) return;
 
-        const auto b = local_bounds();
         const auto alpha = static_cast<std::uint8_t>(55.0f + flash_ * 105.0f);
         canvas.set_fill_color(canvas::Color::rgba8(255, 151, 43, alpha));
         canvas.fill_rounded_rect(1.0f, 1.0f, b.width - 2.0f, b.height - 2.0f, 7.0f);
@@ -58,6 +65,17 @@ public:
     }
 
     float flash_intensity() const { return flash_; }
+    void on_mouse_event(const view::MouseEvent& event) override {
+        // Knobs win hit-testing as child views. A press that reaches the
+        // column therefore landed on its title or otherwise-empty background,
+        // both of which are useful audition-pad targets.
+        if (event.isPress() && event.button == view::MouseButton::left) {
+            manual_triggers_->signal(voice_);
+            return;
+        }
+        view::GroupBox::on_mouse_event(event);
+    }
+
     void poll_activity() {
         if (!activity_->consume(voice_, last_hit_)) return;
         flash_ = 1.0f;
@@ -76,6 +94,7 @@ private:
     }
 
     std::shared_ptr<PulpKitUiActivity> activity_;
+    std::shared_ptr<PulpKitManualTriggers> manual_triggers_;
     PulpKitVoiceIndex voice_;
     PulpKitUiActivity::Sequence last_hit_ = 0;
     float flash_ = 0.0f;
@@ -86,9 +105,11 @@ private:
 class PulpKitEditor final : public view::View {
 public:
     PulpKitEditor(state::StateStore& store,
-                  std::shared_ptr<PulpKitUiActivity> activity)
-        : store_(store), activity_(std::move(activity)) {
-        set_bounds({0, 0, 1200, 480});
+                  std::shared_ptr<PulpKitUiActivity> activity,
+                  std::shared_ptr<PulpKitManualTriggers> manual_triggers)
+        : store_(store), activity_(std::move(activity)),
+          manual_triggers_(std::move(manual_triggers)) {
+        set_bounds({0, 0, 1200, 330});
         set_theme(view::Theme::dark());
         set_background_color(canvas::Color::rgba8(0x12, 0x17, 0x1D));
         flex().direction = view::FlexDirection::column;
@@ -177,8 +198,8 @@ private:
         knob->set_format([this, id](float normalized) {
             return format_value(id, normalized);
         });
-        knob->flex().preferred_width = 42.0f;
-        knob->flex().preferred_height = 42.0f;
+        knob->flex().preferred_width = 38.0f;
+        knob->flex().preferred_height = 38.0f;
         knob->flex().flex_shrink = 1.0f;
         bindings_.push_back(view::bind_parameter(*knob, store_, id));
         parent.add_child(std::move(knob));
@@ -187,14 +208,15 @@ private:
     void add_voice(view::View& surface, std::string title, std::string id,
                    PulpKitVoiceIndex voice,
                    std::initializer_list<Control> controls) {
-        auto column = std::make_unique<VoiceColumn>(activity_, voice);
+        auto column = std::make_unique<VoiceColumn>(
+            activity_, manual_triggers_, voice);
         column->set_title(std::move(title));
         column->set_id(std::move(id));
         column->flex().direction = view::FlexDirection::column;
         column->flex().align_items = view::FlexAlign::center;
         column->flex().padding = 3.0f;
         column->flex().padding_top = 34.0f;
-        column->flex().gap = 3.0f;
+        column->flex().gap = 2.0f;
         column->flex().preferred_width = 82.0f;
         column->flex().min_width = 52.0f;
         column->flex().flex_grow = 1.0f;
@@ -206,6 +228,7 @@ private:
 
     state::StateStore& store_;
     std::shared_ptr<PulpKitUiActivity> activity_;
+    std::shared_ptr<PulpKitManualTriggers> manual_triggers_;
     // Destroy listeners before View's base destructor destroys their widgets.
     std::vector<view::ParameterBinding> bindings_;
 };
@@ -213,7 +236,8 @@ private:
 }  // namespace pulp_kit_ui
 
 inline std::unique_ptr<view::View> PulpKit::create_view() {
-    return std::make_unique<pulp_kit_ui::PulpKitEditor>(state(), ui_activity_);
+    return std::make_unique<pulp_kit_ui::PulpKitEditor>(
+        state(), ui_activity_, manual_triggers_);
 }
 
 }  // namespace pulp::examples
