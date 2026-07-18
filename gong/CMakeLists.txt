@@ -20,7 +20,7 @@ pulp_add_plugin(Gong
     PLUGIN_NAME       "Gong"
     BUNDLE_ID         "com.pulp.gong"
     MANUFACTURER      "Pulp"
-    VERSION           "1.0.0"
+    VERSION           "${PROJECT_VERSION}"
     CATEGORY          Instrument
     PLUGIN_CODE       "PGng"
     MANUFACTURER_CODE "Pulp"

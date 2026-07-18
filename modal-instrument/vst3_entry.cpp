@@ -6,5 +6,5 @@ static const Steinberg::FUID ModalInstrumentUID(0x50554C50, 0x4D4F4441, 0x4C494E
 
 PULP_VST3_PLUGIN(ModalInstrumentUID, "ModalInstrument",
                  Steinberg::Vst::PlugType::kInstrumentSynth,
-                 "Pulp", "1.0.0", "https://github.com/danielraffel/pulp",
+                 "Pulp", PULP_PHYSMOD_VERSION, "https://github.com/danielraffel/pulp",
                  pulp::examples::create_modal_instrument)

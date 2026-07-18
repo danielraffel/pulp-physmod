@@ -137,7 +137,7 @@ public:
             .name = "PulpKit",
             .manufacturer = "Pulp",
             .bundle_id = "com.pulp.pulp-kit",
-            .version = "1.0.0",
+            .version = PULP_PHYSMOD_VERSION,
             .category = format::PluginCategory::Instrument,
             .input_buses = {},
             .output_buses = {{"Main Out", 2, false}},

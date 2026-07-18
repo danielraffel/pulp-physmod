@@ -20,7 +20,7 @@ pulp_add_plugin(PreparedPiano
     PLUGIN_NAME       "PreparedPiano"
     BUNDLE_ID         "com.pulp.prepared-piano"
     MANUFACTURER      "Pulp"
-    VERSION           "1.0.0"
+    VERSION           "${PROJECT_VERSION}"
     CATEGORY          Instrument
     PLUGIN_CODE       "PPrP"
     MANUFACTURER_CODE "Pulp"

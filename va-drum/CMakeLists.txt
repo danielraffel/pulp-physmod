@@ -19,7 +19,7 @@ pulp_add_plugin(VaDrum
     PLUGIN_NAME       "VaDrum"
     BUNDLE_ID         "com.pulp.va-drum"
     MANUFACTURER      "Pulp"
-    VERSION           "1.0.0"
+    VERSION           "${PROJECT_VERSION}"
     CATEGORY          Instrument
     PLUGIN_CODE       "PVaD"
     MANUFACTURER_CODE "Pulp"

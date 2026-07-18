@@ -20,7 +20,7 @@ pulp_add_plugin(BowedString
     PLUGIN_NAME       "BowedString"
     BUNDLE_ID         "com.pulp.bowed-string"
     MANUFACTURER      "Pulp"
-    VERSION           "1.0.0"
+    VERSION           "${PROJECT_VERSION}"
     CATEGORY          Instrument
     PLUGIN_CODE       "PBoS"
     MANUFACTURER_CODE "Pulp"

@@ -6,5 +6,5 @@ static const Steinberg::FUID BowedStringUID(0x50554C50, 0x424F5745, 0x44535452, 
 
 PULP_VST3_PLUGIN(BowedStringUID, "BowedString",
                  Steinberg::Vst::PlugType::kInstrumentSynth,
-                 "Pulp", "1.0.0", "https://github.com/danielraffel/pulp",
+                 "Pulp", PULP_PHYSMOD_VERSION, "https://github.com/danielraffel/pulp",
                  pulp::examples::create_bowed_string)

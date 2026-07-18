@@ -5,5 +5,5 @@
 static const Steinberg::FUID PulpKitUID(0x50554C50, 0x4B495400, 0x00000001, 0x00000001);
 
 PULP_VST3_PLUGIN(PulpKitUID, "PulpKit", Steinberg::Vst::PlugType::kInstrumentSynth,
-                 "Pulp", "1.0.0", "https://github.com/danielraffel/pulp",
+                 "Pulp", PULP_PHYSMOD_VERSION, "https://github.com/danielraffel/pulp",
                  pulp::examples::create_pulp_kit)

@@ -81,6 +81,14 @@ TEST_CASE("VaDrum renders a bounded, non-silent bass drum", "[instrument][va-dru
             Catch::Approx(96.39).margin(2.0));
 }
 
+TEST_CASE("all processor descriptors carry the release version", "[release][version]") {
+    const std::array processors{
+        create_va_drum(), create_pulp_kit(), create_modal_instrument(),
+        create_prepared_piano(), create_bowed_string(), create_gong()};
+    for (const auto& processor : processors)
+        CHECK(processor->descriptor().version == PULP_PHYSMOD_VERSION);
+}
+
 TEST_CASE("PulpKit routes notes to voices and stays bounded", "[instrument][pulp-kit]") {
     auto p = create_pulp_kit();
     // kick, snare, closed hat at different times

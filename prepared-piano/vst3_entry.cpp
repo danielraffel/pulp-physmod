@@ -6,5 +6,5 @@ static const Steinberg::FUID PreparedPianoUID(0x50554C50, 0x50524550, 0x00000001
 
 PULP_VST3_PLUGIN(PreparedPianoUID, "PreparedPiano",
                  Steinberg::Vst::PlugType::kInstrumentSynth,
-                 "Pulp", "1.0.0", "https://github.com/danielraffel/pulp",
+                 "Pulp", PULP_PHYSMOD_VERSION, "https://github.com/danielraffel/pulp",
                  pulp::examples::create_prepared_piano)

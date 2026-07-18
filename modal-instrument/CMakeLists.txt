@@ -20,7 +20,7 @@ pulp_add_plugin(ModalInstrument
     PLUGIN_NAME       "ModalInstrument"
     BUNDLE_ID         "com.pulp.modal-instrument"
     MANUFACTURER      "Pulp"
-    VERSION           "1.0.0"
+    VERSION           "${PROJECT_VERSION}"
     CATEGORY          Instrument
     PLUGIN_CODE       "PMod"
     MANUFACTURER_CODE "Pulp"

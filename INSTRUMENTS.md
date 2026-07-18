@@ -72,7 +72,7 @@ brightness sweep.
 
 ## Installing
 
-Open **PulpPhysmod-1.0.0.pkg** and follow the installer. Use the **Customize**
+Open **PulpPhysmod-1.0.2.pkg** and follow the installer. Use the **Customize**
 pane to choose which instruments to install. Plugins install to the standard
 locations:
 

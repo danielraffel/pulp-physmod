@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.24)
-project(PulpPhysmodInstruments LANGUAGES CXX)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/release-version.txt" PHYSMOD_VERSION LIMIT_COUNT 1)
+project(PulpPhysmodInstruments VERSION "${PHYSMOD_VERSION}" LANGUAGES CXX)
+
+# One release version feeds the processor descriptors, manual VST3 factories,
+# format bundle metadata, and installer. Keep host-visible versions in lockstep.
+add_compile_definitions(PULP_PHYSMOD_VERSION="${PROJECT_VERSION}")
 
 # Consumes the Pulp SDK (find_package(Pulp)); the reusable DSP primitives
 # (pulp::signal modal bank, bridged-T resonator, square-osc bank, modal spec)
