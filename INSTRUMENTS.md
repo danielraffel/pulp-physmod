@@ -20,13 +20,20 @@ after the attack emerges from the circuit itself, not a scripted envelope.
   a different timbre, not just louder).
 
 ### PulpKit — analog drum machine (13 voices)
-A full circuit-modeled drum machine. Every voice is its own analog circuit: the
-kick and toms/congas are bridged-T resonators, the snare is two resonators plus a
-noise "snappy," the hats/cymbal/cowbell are square-oscillator clusters through
-filters, the clap is noise through a flam envelope, and so on.
-- **Controls:** every voice has the same four — **Level, Tune, Decay, Tone** —
-  plus a Balance on the snare.
-- **Note map:** 36 kick · 37 rim · 38/40 snare · 39 clap · 41–50 toms & congas ·
+A 13-voice analog-modeling drum machine inspired by the TR-808 signal paths and
+calibrated reference behavior. The Werner-derived kick is a bridged-T circuit
+model; the remaining voices use purpose-built resonator, oscillator-cluster,
+filter, noise, and envelope models. PulpKit does not yet claim a component-level
+model of every original voice (the cymbal is intentionally simpler than the
+published three-band/VCA/tone-stage circuit, for example).
+- **Classic controls:** a dedicated editor surface follows the original
+  voice-specific panel vocabulary — Bass Drum and Cymbal have Level/Tone/Decay;
+  Snare has Level/Tone/Snappy; the toms have Level/Tuning; Open Hat has
+  Level/Decay; the remaining voices have Level.
+- **Extended controls:** every voice retains **Level, Tune, Decay, Tone**, plus
+  the released shell/noise Balance on the snare. These creative extensions are
+  kept separate from the classic panel.
+- **Note map:** 36 kick · 37 rim · 38/40 snare · 39 clap · 41–50 low/mid/high toms ·
   42/44 closed hat · 46 open hat · 49 cymbal · 51/56 cowbell · 70/75 maracas/clave.
 
 ### ModalInstrument — mallets & strings (modal synthesis)
