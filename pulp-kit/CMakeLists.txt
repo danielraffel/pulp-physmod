@@ -33,7 +33,7 @@ pulp_add_plugin(PulpKit
 # bank, biquad/svf), so the shared Core target carries that dependency. The
 # membrane voice includes VaDrum's voice header, so the sibling example dir is
 # on the interface include path too.
-target_link_libraries(PulpKit_Core INTERFACE pulp::signal)
+target_link_libraries(PulpKit_Core INTERFACE pulp::signal pulp::view)
 target_include_directories(PulpKit_Core INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../va-drum)
 
 if(PULP_HAS_CLAP AND APPLE)

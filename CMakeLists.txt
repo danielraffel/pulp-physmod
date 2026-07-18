@@ -26,7 +26,7 @@ if(PHYSMOD_BUILD_TESTS)
     target_include_directories(physmod-instrument-tests PRIVATE
         ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/va-drum ${CMAKE_SOURCE_DIR}/test)
     target_link_libraries(physmod-instrument-tests PRIVATE
-        pulp::format pulp::signal Catch2::Catch2WithMain)
+        pulp::format pulp::signal pulp::view Catch2::Catch2WithMain)
     list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
     include(Catch)
     catch_discover_tests(physmod-instrument-tests)
@@ -40,3 +40,11 @@ target_link_libraries(ab-tone PRIVATE pulp::format pulp::signal)
 add_executable(knob-sweep tools/knob_sweep.cpp)
 target_include_directories(knob-sweep PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/va-drum ${CMAKE_SOURCE_DIR}/test)
 target_link_libraries(knob-sweep PRIVATE pulp::format pulp::signal)
+
+# Sample-free diagnostic for PulpKit's Classic bass-drum control response. It
+# renders the Processor directly and prints numeric metrics at the same five
+# normalized positions used by the licensed-reference bench sweep.
+add_executable(pulpkit-parity tools/pulpkit_parity.cpp)
+target_include_directories(pulpkit-parity PRIVATE
+    ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/va-drum ${CMAKE_SOURCE_DIR}/test)
+target_link_libraries(pulpkit-parity PRIVATE pulp::format pulp::signal)

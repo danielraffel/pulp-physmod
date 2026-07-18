@@ -125,7 +125,8 @@ public:
         const double noise = bandpass_.process(highpass_.process(noise_.next()));
         const double snappy = noise * snappy_env_;
         snappy_env_ = signal::snap_to_zero(snappy_env_ * snappy_decay_coeff_);
-        const double mix = (1.0 - balance_) * tone + balance_ * snappy;
+        const double mix = (1.0 - balance_) * tone +
+                           balance_ * snappy_level_ * snappy;
         return static_cast<float>(signal::snap_to_zero(level_ * kOutputGain * mix));
     }
 
@@ -160,6 +161,15 @@ public:
         balance_ = std::clamp(balance, 0.0, 1.0);
     }
     double balance() const noexcept { return balance_; }
+
+    /// Snare-wire amount in [0, 1]. Unlike Balance, this leaves the shell path
+    /// untouched and scales only the filtered-noise component, matching the
+    /// behavior expected from the original instrument's Snappy control. The
+    /// default 1.0 is neutral, preserving the released calibrated sound.
+    void set_snappy_level(float level01) noexcept {
+        snappy_level_ = std::clamp(static_cast<double>(level01), 0.0, 1.0);
+    }
+    double snappy_level() const noexcept { return snappy_level_; }
 
     /// Snappy decay knob in [0, 1], mapped to a noise-gate T60 of ~40..220 ms.
     /// Only the snare wires' rattle length moves; the shell ring is fixed by the
@@ -215,6 +225,7 @@ private:
 
     double sample_rate_ = 48000.0;
     double balance_ = kDefaultBalance;
+    double snappy_level_ = 1.0;
     double decay_knob_ = 0.5;
     double tune_ = 1.0;
     double tone_knob_ = 0.5;  ///< 0.5 == calibrated 4200 Hz snappy bandpass centre.

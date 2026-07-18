@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -25,13 +26,20 @@ struct Note {
     int velocity; ///< 1..127
 };
 
+struct ParamValue {
+    pulp::state::ParamID id;
+    float value;  ///< plain parameter-domain value, not normalized
+};
+
 /// Render `seconds` of an instrument's left channel, sending the given note-ons,
 /// block by block through the Processor's real process() path.
 inline std::vector<float> render(pulp::format::Processor& proc,
-                                 std::vector<Note> notes, double seconds) {
+                                 std::vector<Note> notes, double seconds,
+                                 std::vector<ParamValue> params = {}) {
     pulp::state::StateStore store;
     proc.set_state_store(&store);
     proc.define_parameters(store);
+    for (const auto& param : params) store.set_value(param.id, param.value);
     pulp::format::PrepareContext ctx;
     ctx.sample_rate = kFs;
     ctx.max_buffer_size = kBlock;
@@ -67,6 +75,59 @@ inline std::vector<float> render(pulp::format::Processor& proc,
         pos += n;
     }
     return out;
+}
+
+/// First-difference energy over signal energy. This robust brightness proxy
+/// avoids an FFT dependency; it is a monotonic proxy, not the reference
+/// corpus's spectral-centroid measurement.
+inline double difference_brightness(const std::vector<float>& x) {
+    double signal = 0.0;
+    double difference = 0.0;
+    for (std::size_t i = 1; i < x.size(); ++i) {
+        signal += static_cast<double>(x[i]) * x[i];
+        const double delta = static_cast<double>(x[i]) - x[i - 1];
+        difference += delta * delta;
+    }
+    return signal > 0.0 ? std::sqrt(difference / signal) : 0.0;
+}
+
+/// T60 estimate from 5 ms RMS frames and a least-squares fit over the -5 to
+/// -35 dB decay region, matching the machine-local Roland corpus analyzer.
+inline double estimate_t60(const std::vector<float>& x) {
+    const std::size_t frame = static_cast<std::size_t>(0.005 * kFs);
+    const std::size_t count = frame > 0 ? x.size() / frame : 0;
+    if (count < 8) return std::numeric_limits<double>::quiet_NaN();
+
+    std::vector<double> envelope(count, 0.0);
+    for (std::size_t block = 0; block < count; ++block) {
+        double sum = 0.0;
+        for (std::size_t i = 0; i < frame; ++i) {
+            const double sample = x[block * frame + i];
+            sum += sample * sample;
+        }
+        envelope[block] = std::sqrt(sum / static_cast<double>(frame) + 1e-20);
+    }
+    const auto peak_it = std::max_element(envelope.begin(), envelope.end());
+    const std::size_t peak_index = static_cast<std::size_t>(peak_it - envelope.begin());
+    const double peak_value = *peak_it;
+
+    double sum_t = 0.0, sum_db = 0.0, sum_tt = 0.0, sum_tdb = 0.0;
+    std::size_t n = 0;
+    for (std::size_t i = peak_index; i < count; ++i) {
+        const double db = 20.0 * std::log10(envelope[i] / std::max(peak_value, 1e-20));
+        if (db > -5.0 || db < -35.0) continue;
+        const double t = (static_cast<double>(i) + 0.5) * frame / kFs;
+        sum_t += t;
+        sum_db += db;
+        sum_tt += t * t;
+        sum_tdb += t * db;
+        ++n;
+    }
+    if (n < 8) return std::numeric_limits<double>::quiet_NaN();
+    const double denom = static_cast<double>(n) * sum_tt - sum_t * sum_t;
+    if (std::abs(denom) < 1e-20) return std::numeric_limits<double>::quiet_NaN();
+    const double slope = (static_cast<double>(n) * sum_tdb - sum_t * sum_db) / denom;
+    return slope < 0.0 ? -60.0 / slope : std::numeric_limits<double>::infinity();
 }
 
 inline double peak(const std::vector<float>& x) {
